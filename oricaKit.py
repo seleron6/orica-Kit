@@ -632,7 +632,7 @@ class main():
                                 if level<13:
                                     rankImage=cv2.copyMakeBorder(rankImage, 210, 1720-210-rankHeight, 121, 1180-121-rankWidth, cv2.BORDER_CONSTANT, value=(0,0,0))
                                 else:
-                                    rankImage=cv2.copyMakeBorder(rankImage, 210, 1720-84-rankHeight, 121, 1180-84-rankWidth, cv2.BORDER_CONSTANT, value=(0,0,0))
+                                    rankImage=cv2.copyMakeBorder(rankImage, 210, 1720-210-rankHeight, 84, 1180-84-rankWidth, cv2.BORDER_CONSTANT, value=(0,0,0))
                                 baseFrame=pre.CvOverlayImage.overlay(baseFrame,rankImage,(0,0))
                             else:
                                 levelImage=cv2.imread("./images/level_rank/level_one.png",cv2.IMREAD_UNCHANGED)

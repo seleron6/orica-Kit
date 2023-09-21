@@ -164,7 +164,7 @@ pyperclip  == 1.8.2\
 Pillow == 10.0.0\
 opencv-python == 4.8.0.76\
 numpy == 1.25.2\
-PySimpleGUI == 4.60.5\
+PySimpleGUI == 4.61.0.198\
 Nuitka == 1.8.2
 
 ## ライセンス
