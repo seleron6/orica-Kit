@@ -151,7 +151,7 @@ jpgまたはpngの画像を挿入できます。\
 現在開発中です。
 
 ## インストール
-[リリース](https://github.com/seleron6/orica-Kit/releases)ページから最新バージョンのOricaKit.zipをダウンロードしてください。
+今は[こちら](https://xgf.nu/jepxx)からお願いします。
 
 ## アンインストール
 インストールしたフォルダごと削除してください。
