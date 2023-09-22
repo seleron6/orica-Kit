@@ -147,7 +147,7 @@ class main():
         [self.VALUE_BLANK.append(f"-CARD_STR{i}-") for i in range(1,17)]
         self.H2Z_DIGIT = str.maketrans('1234567890', '１２３４５６７８９０')
         self.DATAS=['datas', 'id', 'ot', 'alias', 'setcode', 'type', 'atk', 'def', 'level', 'race', 'attribute', 'category']
-        self.VERSION="β-0.1"
+        self.VERSION="β-0.2"
         self.ICON="./icon.ico"
 
     def createVariable(self):

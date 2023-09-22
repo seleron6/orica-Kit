@@ -133,6 +133,7 @@ def createNameImageJP(text,textColor,widthLimit):
                 cv_image=createWordImage(t,font,baseFontSize,textColor,textHeight,"jp")
             imageList.append(cv_image)
     for image in imageList:
+        if image is None: continue
         if rtnImage is None:
             rtnImage=image
         else:
@@ -225,6 +226,7 @@ def createRaceImageJP(font,typeList,fontSize):
             cv_image=createWordImage(t,font,fontSize,(0,0,0),textHeight,"jp")
             imageList.append(cv_image)
     for image in imageList:
+        if image is None: continue
         if rtnImage is None:
             rtnImage=image
         else:
@@ -249,6 +251,7 @@ def createRaceImageEN(font,typeList,fontSize):
             cv_image=createWordImage(t,font,fontSize,(0,0,0),textHeight,"en")
             imageList.append(cv_image)
     for image in imageList:
+        if image is None: continue
         if rtnImage is None:
             rtnImage=image
         else:
@@ -289,6 +292,7 @@ def createTextImageJP(text,fontSize,widthLimit):
                 cv_image=createWordImage(t,font,fontSize,textColor,textHeight,"jp")
             imageList.append(cv_image)
     for image in imageList:
+        if image is None: continue
         if rtnImage is None:
             rtnImage=image
         else:
@@ -371,26 +375,30 @@ def createWordImage(text,font,fontSize,textColor,height,lang=None):
                 if any(sum(pixel) > threshold * 3 for pixel in column):
                     break
             right_margin -= 1
-        img = img.crop((left_margin, 0, right_margin + 1, img.height))
-        cv_image = cv2.cvtColor(np.asarray(img), cv2.COLOR_RGBA2BGRA)
-        pad2=0
-        if text in ("ヴ"):
-            pad=0
-        elif text in ("グ"):
-            pad=int(fontSize/18)
-        elif text in ("＠","。","、"):
-            pad=int(fontSize/6)
-        elif re.match("[ぁ-んァ-ヶｱ-ﾝﾞﾟ]",text,flags=0) or text in ("ー","＝","【"):
-            pad=int(fontSize/4.5)
-        elif text in ["・","："]:
-            pad=int(fontSize/3)
-            pad2=int(fontSize/6)
+        try:
+            img = img.crop((left_margin, 0, right_margin + 1, img.height))
+        except:
+            return None
         else:
-            pad=int(fontSize/9)
-        imageHeight,imageWidth,imageChannel=cv_image.shape
-        if text=="＠":
-            cv_image = cv2.resize(cv_image, (int(imageWidth*0.85),imageHeight))
-        cv_image=cv2.copyMakeBorder(cv_image, 0, 0, pad2, pad, cv2.BORDER_CONSTANT, value=(0,0,0))
+            cv_image = cv2.cvtColor(np.asarray(img), cv2.COLOR_RGBA2BGRA)
+            pad2=0
+            if text in ("ヴ"):
+                pad=0
+            elif text in ("グ"):
+                pad=int(fontSize/18)
+            elif text in ("＠","。","、"):
+                pad=int(fontSize/6)
+            elif re.match("[ぁ-んァ-ヶｱ-ﾝﾞﾟ]",text,flags=0) or text in ("ー","＝","【"):
+                pad=int(fontSize/4.5)
+            elif text in ["・","："]:
+                pad=int(fontSize/3)
+                pad2=int(fontSize/6)
+            else:
+                pad=int(fontSize/9)
+            imageHeight,imageWidth,imageChannel=cv_image.shape
+            if text=="＠":
+                cv_image = cv2.resize(cv_image, (int(imageWidth*0.85),imageHeight))
+            cv_image=cv2.copyMakeBorder(cv_image, 0, 0, pad2, pad, cv2.BORDER_CONSTANT, value=(0,0,0))
     return cv_image
 
 class CvOverlayImage(object):
