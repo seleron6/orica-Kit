@@ -2,9 +2,11 @@ import PySimpleGUI as sg
 import pyperclip as clip
 import cv2
 import numpy as np
-import re
 import os
+import sqlite3
 import math
+import re
+import json
 
 import validate as vali
 import windowLayout as wl
@@ -24,6 +26,7 @@ class main():
         sg.Graph.draw_image_plus = draw_image_plus
         self.createConst()
         self.createVariable()
+        self.setting()
         self.createMainWindow()
         self.setValidate()
         self.eventHandler()
@@ -149,6 +152,25 @@ class main():
         self.DATAS=['datas', 'id', 'ot', 'alias', 'setcode', 'type', 'atk', 'def', 'level', 'race', 'attribute', 'category']
         self.VERSION="β-0.2"
         self.ICON="./icon.ico"
+        self.DATA_VALIDATE=[
+            ["-DATA_DETAIL_ID-",0,999999999],
+            ["-DATA_DETAIL_OT-",0,4],
+            ["-DATA_DETAIL_ALIAS-",0,999999999],
+            ["-DATA_DETAIL_SETCODE-",0,999999999999999],
+            ["-DATA_DETAIL_TYPE-",0,999999999],
+            ["-DATA_DETAIL_ATK-",0,99999],
+            ["-DATA_DETAIL_DEF-",0,99999],
+            ["-DATA_DETAIL_LEVEL-",0,999999999],
+            ["-DATA_DETAIL_RACE-",0,99999999],
+            ["-DATA_DETAIL_ATTRIBUTE-",0,99],
+            ["-DATA_DETAIL_CATEGORY-",0,9999999999],
+        ]
+        self.TEXT_VALIDATE=[
+            ["-TEXT_DETAIL_ID-",0,999999999],
+            ["-TEXT_DETAIL_NAME-"],
+            ["-TEXT_DETAIL_DESC-"],
+        ]
+        [self.TEXT_VALIDATE.append([f"-TEXT_DETAIL_STR{i}-"]) for i in range (1,17)]
 
     def createVariable(self):
         self.cardImage=None
@@ -165,11 +187,17 @@ class main():
         self.adjustWindow=None
         self.imageWindow=None
         self.saveWindow=None
+        self.detailDatasWindow=None
+        self.detailTextsWindow=None
         self.setcodes=None
         self.oricasetcodes=None
         self.lang="en"
         self.isP=False
         self.bigImage=None
+        self.cdbDatas=None
+        self.cdbTexts=None
+        self.tmpData=None
+        self.tmpText=None
         self.layout=[
             [
                 sg.TabGroup(
@@ -177,7 +205,7 @@ class main():
                         sg.Tab("datas",wl.mainWindowLayout(),key="-TAB_DATAS-"),
                         sg.Tab("texts",wl.textWindowLayout(),key="-TAB_TEXTS-"),
                         sg.Tab("画像",self.canvas_layout,key="-TAB_PREVIEW-"),
-                        sg.Tab("その他",wl.othersLayout(),key="-TAB_OTHERS-")
+                        sg.Tab("CDB",wl.cdbLayout(),key="-TAB_CDB-")
                     ]],key="-TAB_GROUP-",enable_events=True,tab_background_color="gray"
                 )
             ],
@@ -185,6 +213,44 @@ class main():
                 wl.sqlWindowLayout()
             ]
         ]
+    
+    def reset(self):
+        if self.setcodeWindow is not None:
+            self.setcodeWindow.close()
+        if self.adjustWindow is not None:
+            self.adjustWindow.close()
+        if self.imageWindow is not None:
+            self.imageWindow.close()
+        if self.saveWindow is not None:
+            self.saveWindow.close()
+        if self.detailDatasWindow is not None:
+            self.detailDatasWindow.close()
+        if self.detailTextsWindow is not None:
+            self.detailTextsWindow.close()
+        self.mainWindow["-OT-"].update("Custom")
+        self.mainWindow["-PRESET_RADIO_FREE-"].update(True)
+        [self.mainWindow[n].update(0) for n in self.VALUE_ZERO]
+        for n in self.VALUE_HIHUN:
+            self.mainWindow[n].update("－")
+            self.mainWindow[n].update(background_color="white")
+        for cname in cti.TYPE_VALUE.keys():
+            self.mainWindow["-CARD_TYPE_"+cname+"-"].update(False)
+            self.mainWindow["-CARD_TYPE_"+cname+"-"].update(disabled=False)
+        [self.mainWindow[f"-CATEGORY_{n[1]}-"].update(False) for n in ci.CATEGORY]
+        for cname in self.DISABLE_STATUS:
+            if "LINK_MARKER" in cname:
+                self.mainWindow[cname].update(False)
+                self.mainWindow[cname].update(disabled=True)
+            elif "SCALE" in cname:
+                self.mainWindow[cname].update(disabled=True)
+            else:
+                self.mainWindow[cname].update(disabled=False)
+        self.mainWindow.write_event_value("-PARAMETER_SETCODE_SET-",None)
+        self.mainWindow.write_event_value("-CARD_TYPE_RESET-",None)
+        self.mainWindow.write_event_value("-CATEGORY_RESET-",None)
+        [self.mainWindow[n].update("") for n in self.VALUE_BLANK]
+        self.mainWindow["-LANGUAGE_EN-"].update(True)
+        self.resetVariable()
     
     def resetVariable(self):
         self.cardImage=None
@@ -200,18 +266,37 @@ class main():
         self.adjustWindow=None
         self.imageWindow=None
         self.saveWindow=None
+        self.detailDatasWindow=None
+        self.detailTextsWindow=None
         self.setcodes=None
         self.oricasetcodes=None
         self.lang="en"
         self.isP=False
         self.bigImage=None
+        self.tmpData=None
+        self.tmpText=None
+    
+    def setting(self):
+        sg.user_settings_filename(filename="config.json",path=".")
+        self.startPos=[0,0]
+        self.path="./"
+        try:
+            with open('./config.json') as f:
+                d=json.load(f)
+                self.startPos=d["-location-"]
+                self.path=d["-cdbpath-"]
+        except:
+            pass
     
     def createMainWindow(self):
-        self.mainWindow=sg.Window("オリカ作成キット "+self.VERSION,self.layout,resizable=False,finalize=True,enable_close_attempted_event=True, location=sg.user_settings_get_entry('-location-', (None, None)),icon=self.ICON)
+        self.mainWindow=sg.Window("オリカ作成キット "+self.VERSION,self.layout,resizable=False,finalize=True,enable_close_attempted_event=True,size=(572,593),location=self.startPos,icon=self.ICON)
         self.mainWindow["-CARD_TEXT-"].Widget.configure(undo=True)
         self.mainWindow["-CARD_TEXT_P-"].Widget.configure(undo=True)
         self.mainWindow["-CARD_TEXT_EN-"].Widget.configure(undo=True)
         self.mainWindow["-CARD_TEXT_EN_P-"].Widget.configure(undo=True)
+        self.mainWindow['-CDB_DATAS-'].bind('<Double-Button-1>', '_Double')
+        self.mainWindow['-CDB_TEXTS-'].bind('<Double-Button-1>', '_Double')
+        self.mainWindow["-CDB_PATH-"].update(self.path)
 
     def setValidate(self):
         for k,v in self.VALIDATE_NUMBER.items():
@@ -296,6 +381,45 @@ class main():
                 textImage=pre.createTextImage(texts[i],self.lang,fontSize,widthLimit)
                 rtnFrame=pre.CvOverlayImage.overlay(rtnFrame,textImage,(textPosX,textPosY+textInterval*i))
         return rtnFrame
+
+    def createSQL(self,radio):
+        sql=""
+        if radio in ("data","all"):
+            id=self.values["-ID-"]
+            ot={"OCG":1, "TCG":2, "OCG/TCG":3, "Custom":4}[self.values["-OT-"]]
+            alias=self.values["-ALIAS-"]
+            setcode=int(self.values["-PARAMETER_SETCODE_HIDDEN-"],16)
+            ctype=self.values["-PARAMETER_TYPE_HIDDEN-"]
+            atk=self.values["-ATK-"]
+            defe=self.values["-DEF-"]
+            level=int(self.values["-SCALE_LEFT-"])*16**6+int(self.values["-SCALE_RIGHT-"])*16**4+int(self.values["-LEVEL-"])
+            race=wl.RACE_VALUE[self.values["-RACE-"]] if self.values["-RACE-"]!="－" else 0
+            attribute=wl.ATTRIBUTE_VALUE[self.values["-ATTRIBUTE-"]] if self.values["-ATTRIBUTE-"]!="－" else 0
+            category=self.values["-PARAMETER_CATEGORY_HIDDEN-"]
+            sql+="INSERT INTO [datas] ([id],[ot],[alias],[setcode],[type],[atk],[def],[level],[race],[attribute],[category]) values ("
+            datas=[id,ot,alias,setcode,ctype,atk,defe,level,race,attribute,category]
+            for d in datas:
+                sql+="'"+str(d)+"',"
+            sql=sql[:-1]+");"
+        if radio in ("text","all"):
+            if sql!="": sql+="\n"
+            sql+="INSERT INTO [texts] ([id],[name],[desc],[str1],[str2],[str3],[str4],[str5],[str6],[str7],[str8],[str9],[str10],[str11],[str12],[str13],[str14],[str15],[str16]) values ("
+            datas=[self.values["-ID-"],self.values["-CARD_NAME-"]]
+            txt=self.values["-CARD_TEXT-"]
+            txtp=self.values["-CARD_TEXT_P-"]
+            if self.isP:
+                if self.values["-CARD_TYPE_NORMAL-"]:
+                    mt="【モンスター情報】"
+                else:
+                    mt="【モンスター効果】"
+                txt=f"【Ｐスケール：青{str(self.values['-SCALE_LEFT-']).translate(self.H2Z_DIGIT)}／赤{str(self.values['-SCALE_RIGHT-']).translate(self.H2Z_DIGIT)}】\n{txtp}\n{mt}\n{txt}"
+            datas.append(txt)
+            for i in range(1,17):
+                datas.append(self.values["-CARD_STR"+str(i)+"-"])
+            for d in datas:
+                sql+="'"+str(d)+"',"
+            sql=sql[:-1]+");"
+        return sql
     
     def eventHandler(self):
         while True:
@@ -305,6 +429,7 @@ class main():
             if self.event in (sg.WIN_CLOSED,sg.WINDOW_CLOSE_ATTEMPTED_EVENT):
                 if self.window is self.mainWindow:
                     sg.user_settings_set_entry('-location-', self.window.current_location())
+                    sg.user_settings_set_entry('-cdbpath-', self.values["-CDB_PATH-"])
                     break
                 elif self.window is self.setcodeWindow:
                     self.setcodeWindow=None
@@ -317,6 +442,12 @@ class main():
                     self.window.close()
                 elif self.window is self.saveWindow:
                     self.saveWindow=None
+                    self.window.close()
+                elif self.window is self.detailDatasWindow:
+                    self.detailDatasWindow=None
+                    self.window.close()
+                elif self.window is self.detailTextsWindow:
+                    self.detailTextsWindow=None
                     self.window.close()
             elif self.event in self.UP_EVENT:
                 limit=self.UP_EVENT[self.event]
@@ -441,7 +572,7 @@ class main():
                 place=self.event.replace("-","").split("_")[2]
                 self.setcodeWindow["-CATEGORY_"+place+"-"].update("")
                 self.setcodeWindow["-CATEGORY_"+place+"_HIDDEN-"].update(0)
-            elif self.event.startswith("-CARD_TYPE"):
+            elif type(self.event) is str and self.event.startswith("-CARD_TYPE"):
                 if self.event in ("-CARD_TYPE_LINK-"):
                     for dis in self.DISABLE_LINK_STATUS:
                         if dis in ("-DEF-","-LEVEL-"): self.mainWindow[dis].update(0)
@@ -463,7 +594,7 @@ class main():
             elif self.event in ("-PARAMETER_SETCODE-","-PARAMETER_TYPE-","-PARAMETER_CATEGORY-"):
                 h=self.event[:-1]+"_HIDDEN-"
                 clip.copy(self.values[h])
-            elif self.event.startswith("-PRESET_RADIO"):
+            elif type(self.event) is str and self.event.startswith("-PRESET_RADIO"):
                 for category_name in ci.CATEGORY_VALUE.keys():
                      self.mainWindow["-CATEGORY_"+category_name+"-"].update(False)
                 for status_name in self.DISABLE_STATUS:
@@ -500,7 +631,7 @@ class main():
                             self.mainWindow[check_name].update(disabled=False)
                 self.mainWindow.write_event_value("-CARD_TYPE_RESET-",None)
                 self.mainWindow.write_event_value("-CATEGORY_RESET-",None)
-            elif self.event.startswith("-CATEGORY"):
+            elif type(self.event) is str and self.event.startswith("-CATEGORY"):
                 cval=ci.calcCategory(self.values)
                 cvh=cval
                 if cval==0:
@@ -508,44 +639,15 @@ class main():
                 self.mainWindow["-PARAMETER_CATEGORY-"].update(cval)
                 self.mainWindow["-PARAMETER_CATEGORY_HIDDEN-"].update(cvh)
             elif self.event=="-SQL_COPY-":
-                sql=""
-                if self.values["-SQL_RADIO_DATA-"] or self.values["-SQL_RADIO_ALL-"]:
-                    id=self.values["-ID-"]
-                    ot={"OCG":1, "TCG":2, "OCG/TCG":3, "Custom":4}[self.values["-OT-"]]
-                    alias=self.values["-ALIAS-"]
-                    setcode=int(self.values["-PARAMETER_SETCODE_HIDDEN-"],16)
-                    ctype=self.values["-PARAMETER_TYPE_HIDDEN-"]
-                    atk=self.values["-ATK-"]
-                    defe=self.values["-DEF-"]
-                    level=int(self.values["-SCALE_LEFT-"])*16**6+int(self.values["-SCALE_RIGHT-"])*16**4+int(self.values["-LEVEL-"])
-                    race=wl.RACE_VALUE[self.values["-RACE-"]] if self.values["-RACE-"]!="－" else 0
-                    attribute=wl.ATTRIBUTE_VALUE[self.values["-ATTRIBUTE-"]] if self.values["-ATTRIBUTE-"]!="－" else 0
-                    category=self.values["-PARAMETER_CATEGORY_HIDDEN-"]
-                    sql+="INSERT INTO [datas] ([id],[ot],[alias],[setcode],[type],[atk],[def],[level],[race],[attribute],[category]) values ("
-                    datas=[id,ot,alias,setcode,ctype,atk,defe,level,race,attribute,category]
-                    for d in datas:
-                        sql+="'"+str(d)+"',"
-                    sql=sql[:-1]+");"
-                if self.values["-SQL_RADIO_TEXT-"] or self.values["-SQL_RADIO_ALL-"]:
-                    if sql!="": sql+="\n"
-                    sql+="INSERT INTO [texts] ([id],[name],[desc],[str1],[str2],[str3],[str4],[str5],[str6],[str7],[str8],[str9],[str10],[str11],[str12],[str13],[str14],[str15],[str16]) values ("
-                    datas=[self.values["-ID-"],self.values["-CARD_NAME-"]]
-                    txt=self.values["-CARD_TEXT-"]
-                    txtp=self.values["-CARD_TEXT_P-"]
-                    if self.isP:
-                        if self.values["-CARD_TYPE_NORMAL-"]:
-                            mt="【モンスター情報】"
-                        else:
-                            mt="【モンスター効果】"
-                        txt=f"【Ｐスケール：青{str(self.values['-SCALE_LEFT-']).translate(self.H2Z_DIGIT)}／赤{str(self.values['-SCALE_RIGHT-']).translate(self.H2Z_DIGIT)}】\n{txtp}\n{mt}\n{txt}"
-                    datas.append(txt)
-                    for i in range(1,17):
-                        datas.append(self.values["-CARD_STR"+str(i)+"-"])
-                    for d in datas:
-                        sql+="'"+str(d)+"',"
-                    sql=sql[:-1]+");"
+                if self.values["-SQL_RADIO_DATA-"]:
+                    radio="data"
+                elif self.values["-SQL_RADIO_TEXT-"]:
+                    radio="text"
+                else:
+                    radio="all"
+                sql=self.createSQL(radio)
                 clip.copy(sql)
-            elif self.event.startswith("-LINK_MARKER"):
+            elif type(self.event) is str and self.event.startswith("-LINK_MARKER"):
                 mark=self.event.replace("-","").replace("LINK_MARKER","")
                 one=1 if self.values[self.event] else -1
                 self.mainWindow["-DEF-"].update(int(self.values["-DEF-"])+cti.LINK_MARKER[mark]*one)
@@ -719,9 +821,9 @@ class main():
                 if self.saveWindow is None:
                     self.saveWindow=sg.Window("保存",wl.saveWindowLayout(),resizable=False,finalize=True,location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
                     self.saveWindow["-SAVE_NAME-"].update(self.values["-ID-"])
-                    vcmd = (self.mainWindow.TKroot.register(vali.validateNumber),'%P',0,1180)
+                    vcmd = (self.saveWindow.TKroot.register(vali.validateNumber),'%P',0,1180)
                     self.saveWindow["-SAVE_WIDTH-"].widget.configure(validate='all',validatecommand=vcmd)
-                    vcmd = (self.mainWindow.TKroot.register(vali.validateNumber),'%P',0,1720)
+                    vcmd = (self.saveWindow.TKroot.register(vali.validateNumber),'%P',0,1720)
                     self.saveWindow["-SAVE_HEIGHT-"].widget.configure(validate='all',validatecommand=vcmd)
                 else:
                     self.saveWindow.close()
@@ -802,62 +904,277 @@ class main():
                     size=(int(self.values["-SAVE_WIDTH-"]),int(self.values["-SAVE_HEIGHT-"]))
                     saveImage=cv2.resize(self.cardImage,size)
                     if self.imwrite(path, saveImage):
-                        sg.popup('保存しました',location=(int(self.saveWindow.current_location()[0]+80),int(self.saveWindow.current_location()[1]+80)))
+                        sg.popup('保存しました',location=(int(self.saveWindow.current_location()[0]+80),int(self.saveWindow.current_location()[1]+80)),icon=self.ICON)
                     else:
                         raise SystemError()
                 except:
-                    sg.popup('保存失敗。保存先・ファイル名・画像サイズに問題がある可能性があります',location=(int(self.saveWindow.current_location()[0]),int(self.saveWindow.current_location()[1])))
-            elif self.event in ("-RESET-","-RESET_WITHOUT_SQL-"):
-                if self.event=="-RESET-":
-                    [self.mainWindow[n].update("") for n in ["-DATAS_SQL-","-TEXTS_SQL-"]]
-                if self.setcodeWindow is not None:
-                    self.setcodeWindow.close()
-                if self.adjustWindow is not None:
-                    self.adjustWindow.close()
-                if self.imageWindow is not None:
-                    self.imageWindow.close()
-                if self.saveWindow is not None:
-                    self.saveWindow.close()
-                self.mainWindow["-OT-"].update("Custom")
-                self.mainWindow["-PRESET_RADIO_FREE-"].update(True)
-                [self.mainWindow[n].update(0) for n in self.VALUE_ZERO]
-                for n in self.VALUE_HIHUN:
-                    self.mainWindow[n].update("－")
-                    self.mainWindow[n].update(background_color="white")
-                for cname in cti.TYPE_VALUE.keys():
-                    self.mainWindow["-CARD_TYPE_"+cname+"-"].update(False)
-                    self.mainWindow["-CARD_TYPE_"+cname+"-"].update(disabled=False)
-                [self.mainWindow[f"-CATEGORY_{n[1]}-"].update(False) for n in ci.CATEGORY]
-                for cname in self.DISABLE_STATUS:
-                    if "LINK_MARKER" in cname:
-                        self.mainWindow[cname].update(False)
-                        self.mainWindow[cname].update(disabled=True)
-                    elif "SCALE" in cname:
-                        self.mainWindow[cname].update(disabled=True)
+                    sg.popup('保存失敗。保存先・ファイル名・画像サイズに問題がある可能性があります',location=(int(self.saveWindow.current_location()[0]),int(self.saveWindow.current_location()[1])),icon=self.ICON)
+            elif self.event=="-RESET-":
+                self.reset()
+            elif type(self.event) is tuple and self.event[0]=="-CDB_DATAS-" and self.event[2][0] is not None and self.event[2][0]!=-1:
+                index=self.values["-CDB_DATAS-"][0]
+                i=index
+                if index>=len(self.cdbTexts): i=len(self.cdbTexts)-1
+                texts=self.cdbTexts[i]
+                if self.cdbDatas[index][0]!=texts[0]:
+                    i=0
+                    while i<len(self.cdbTexts):
+                        texts=self.cdbTexts[i]
+                        if self.cdbDatas[index][0]==texts[0]: break
+                        i+=1
+                if i<len(self.cdbTexts):
+                    self.mainWindow["-CDB_TEXTS-"].update(select_rows=[i])
+                    self.mainWindow["-CDB_TEXTS-"].set_vscroll_position(i/len(self.cdbTexts))
+                else:
+                    sg.popup('選択されたdatasに対応するtextsが存在しません。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                    self.mainWindow["-CDB_TEXTS-"].update(select_rows=[])
+            elif type(self.event) is tuple and self.event[0]=="-CDB_TEXTS-" and self.event[2][0] is not None and self.event[2][0]!=-1:
+                index=self.values["-CDB_TEXTS-"][0]
+                i=index
+                if index>=len(self.cdbDatas): i=len(self.cdbDatas)-1
+                datas=self.cdbDatas[i]
+                if self.cdbTexts[index][0]!=datas[0]:
+                    i=0
+                    while i<len(self.cdbDatas):
+                        datas=self.cdbDatas[i]
+                        if self.cdbTexts[index][0]==datas[0]: break
+                        i+=1
+                if i<len(self.cdbDatas):
+                    self.mainWindow["-CDB_DATAS-"].update(select_rows=[i])
+                    self.mainWindow["-CDB_DATAS-"].set_vscroll_position(i/len(self.cdbDatas))
+                else:
+                    sg.popup('選択されたtextsに対応するdatasが存在しません。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                    self.mainWindow["-CDB_DATAS-"].update(select_rows=[])
+            elif self.event=="-CDB_DATAS-_Double" and len(self.values["-CDB_DATAS-"])==1:
+                if self.detailDatasWindow is not None:
+                    self.detailDatasWindow.close()
+                self.tmpData=[]
+                index=self.values["-CDB_DATAS-"][0]
+                i=0
+                self.detailDatasWindow=sg.Window("",wl.datasLayout(),resizable=False,finalize=True,location=(int(self.mainWindow.current_location()[0]-wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                self.detailDatasWindow["-CDB_PATH-"].update(self.values["-CDB_PATH-"])
+                for d in self.DATA_VALIDATE:
+                    self.detailDatasWindow[d[0]].update(self.cdbDatas[index][i])
+                    self.tmpData.append(self.cdbDatas[index][i])
+                    vcmd = (self.detailDatasWindow.TKroot.register(vali.validateNumber),'%P',d[1],d[2])
+                    self.detailDatasWindow[d[0]].widget.configure(validate='all',validatecommand=vcmd)
+                    i+=1
+            elif self.event=="-DATA_UPDATE-" and self.detailDatasWindow is not None:
+                sql="UPDATE datas SET "
+                whe="WHERE "
+                i=0
+                ch=[]
+                for d in self.DATA_VALIDATE:
+                    com=d[0].replace("-","").split("_")[2].lower()
+                    ch.append(self.values[d[0]])
+                    if com=="id":
+                        sql+=f"{com} = {self.values[d[0]]}"
+                        whe+=f"{com} = {self.tmpData[i]}"
                     else:
-                        self.mainWindow[cname].update(disabled=False)
-                self.mainWindow.write_event_value("-PARAMETER_SETCODE_SET-",None)
-                self.mainWindow.write_event_value("-CARD_TYPE_RESET-",None)
-                self.mainWindow.write_event_value("-CATEGORY_RESET-",None)
-                [self.mainWindow[n].update("") for n in self.VALUE_BLANK]
-                self.mainWindow["-LANGUAGE_EN-"].update(True)
-                self.resetVariable()
-            elif self.event=="-CREATE_FROM_SQL-":
-                self.mainWindow.write_event_value("-RESET_WITHOUT_SQL-",None)
-                datasSql=self.values["-DATAS_SQL-"]
-                if datasSql!="":
-                    header = re.findall(r'\[(.*?)\]', datasSql)
-                    nums = re.findall(r'\'(.*?)\'', datasSql)
-                    if header==self.DATAS or len(header)-1==len(nums):
-                        self.mainWindow["-ID-"].update(nums[0])
-                        self.mainWindow["-OT-"].update(nums[1])
-                        self.mainWindow["-ALIAS-"].update(nums[2])
-                        self.mainWindow["-SETCODE-"].update(nums[3])
-                        self.mainWindow["-ATK-"].update(nums[5])
-                        self.mainWindow["-DEF-"].update(nums[6])
-                        self.mainWindow["-RACE-"].update(wl.RACE[int(math.log2(int(nums[8])))])
-                        self.mainWindow["-ATTRIBUTE-"].update(wl.ATTRIBUTE[int(math.log2(int(nums[9])))])
-                textsSql=self.values["-TEXTS_SQL-"]
+                        sql+=f", {com} = {self.values[d[0]]}"
+                        whe+=f" AND {com} = {self.tmpData[i]}"
+                    i+=1
+                sql+=f" {whe}"
+                path=self.values["-CDB_PATH-"]
+                try:
+                    with sqlite3.connect(path) as conn:
+                        cur=conn.cursor()
+                        cur.execute(sql)
+                        cur.close()
+                        sg.popup('変更しました。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                        self.tmpData=ch
+                        self.mainWindow.write_event_value("-READ_CDB-",None)
+                except Exception as e:
+                    #print(e)
+                    sg.popup('変更失敗。cdbが移動しているかデータに誤りがある可能性があります。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+            elif self.event=="-CDB_TEXTS-_Double" and len(self.values["-CDB_TEXTS-"])==1:
+                if self.detailTextsWindow is not None:
+                    self.detailTextsWindow.close()
+                self.tmpText=[]
+                index=self.values["-CDB_TEXTS-"][0]
+                i=0
+                self.detailTextsWindow=sg.Window("",wl.textsLayout(),resizable=False,finalize=True,location=(int(self.mainWindow.current_location()[0]-wl.WIDTH),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                self.detailTextsWindow["-CDB_PATH-"].update(self.values["-CDB_PATH-"])
+                self.detailTextsWindow["-TEXT_DETAIL_DESC-"].Widget.configure(undo=True)
+                for d in self.TEXT_VALIDATE:
+                    self.detailTextsWindow[d[0]].update(self.cdbTexts[index][i])
+                    self.tmpText.append(self.cdbTexts[index][i])
+                    if len(d)==3:
+                        vcmd = (self.detailTextsWindow.TKroot.register(vali.validateNumber),'%P',d[1],d[2])
+                        self.detailTextsWindow[d[0]].widget.configure(validate='all',validatecommand=vcmd)
+                    i+=1
+            elif self.event=="-TEXT_UPDATE-" and self.detailTextsWindow is not None:
+                sql="UPDATE texts SET "
+                whe="WHERE "
+                i=0
+                ch=[]
+                path=self.values["-CDB_PATH-"]
+                for d in self.TEXT_VALIDATE:
+                    com=d[0].replace("-","").split("_")[2].lower()
+                    ch.append(self.values[d[0]])
+                    if com=="id":
+                        sql+=f"{com} = {self.values[d[0]]}"
+                        whe+=f"{com} = {self.tmpText[i]}"
+                    else:
+                        sql+=f", {com} = '{self.values[d[0]]}'"
+                        whe+=f" AND {com} = '{self.tmpText[i]}'"
+                    i+=1
+                sql+=f" {whe}"
+                try:
+                    with sqlite3.connect(path) as conn:
+                        cur=conn.cursor()
+                        cur.execute(sql)
+                        cur.close()
+                        sg.popup('変更しました。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                        self.tmpText=ch
+                        self.mainWindow.write_event_value("-READ_CDB-",None)
+                except Exception as e:
+                    print(e)
+                    sg.popup('変更失敗。cdbが移動しているかデータに誤りがある可能性があります。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+            elif self.event=="-DELETE_CDB-":
+                if self.values["-TAB_CDB_GROUP-"]=="-TAB_CDB_DATAS-":
+                    db=self.cdbDatas
+                    val=self.values["-CDB_DATAS-"]
+                else:
+                    db=self.cdbTexts
+                    val=self.values["-CDB_TEXTS-"]
+                if db is None:
+                    sg.popup('cdbを読み込んでください。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                elif len(val)==0:
+                    sg.popup('読み込むレコードを選択してください。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                else:
+                    yesno=sg.popup_yes_no('本当に削除しますか？',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                    if yesno=="Yes":
+                        path=self.values["-CDB_PATH-"]
+                        try:
+                            with sqlite3.connect(path) as conn:
+                                if db==self.cdbDatas:
+                                    datas=self.cdbDatas[val[0]]
+                                    sql=f"DELETE FROM datas WHERE id = {datas[0]} AND ot = {datas[1]} AND alias = {datas[2]} AND setcode = {datas[3]} AND type = {datas[4]} AND atk = {datas[5]} AND def = {datas[6]} AND level = {datas[7]} AND race = {datas[8]} AND attribute = {datas[9]} AND category = {datas[10]};"
+                                elif db==self.cdbTexts:
+                                    texts=self.cdbTexts[val[0]]
+                                    sql=f"DELETE FROM texts WHERE id = {texts[0]} AND name = '{texts[1]}' AND desc = '{texts[2]}'"
+                                    for i in range(1,17):
+                                        sql+=f" AND str{i} = '{texts[i+2]}'"
+                                cur=conn.cursor()
+                                cur.execute(sql)
+                                cur.close()
+                                sg.popup('削除しました。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                                self.mainWindow.write_event_value("-READ_CDB-",None)
+                        except Exception as e:
+                            #print(e)
+                            sg.popup('削除できませんでした。cdbのパスが間違っているか既に削除されている可能性があります。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+            elif self.event=="-READ_CDB-":
+                path=self.values["-CDB_PATH-"]
+                try:
+                    with sqlite3.connect(path) as conn:
+                        cur=conn.cursor()
+                        cur.execute('SELECT * FROM datas')
+                        self.cdbDatas=cur.fetchall()
+                        self.mainWindow["-CDB_DATAS-"].update(self.cdbDatas)
+                        cur.execute('SELECT * FROM texts')
+                        self.cdbTexts=cur.fetchall()
+                        self.mainWindow["-CDB_TEXTS-"].update(self.cdbTexts)
+                        cur.close()
+                except Exception as e:
+                    #print(e)
+                    sg.popup('読み込み失敗。cdbのパスを再確認してください。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+            elif self.event=="-LOAD_CDB-":
+                if self.cdbDatas is None:
+                    sg.popup('cdbを読み込んでください。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                elif len(self.values["-CDB_DATAS-"])==0 or len(self.values["-CDB_TEXTS-"])==0:
+                    sg.popup('datas,textsともに存在するレコードを選択してください。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                else:
+                    self.reset()
+                    pen=False
+                    lin=False
+                    datas=self.cdbDatas[self.values["-CDB_DATAS-"][0]]
+                    self.mainWindow["-ID-"].update(datas[0])
+                    self.mainWindow["-OT-"].update(["OCG","TCG","OCG/TCG","Custom"][datas[1]-1])
+                    self.mainWindow["-ALIAS-"].update(datas[2])
+                    self.mainWindow["-SETCODE-"].update(datas[3])
+                    tybin=format(datas[4],"b")[::-1]
+                    numType={v: k for k, v in cti.TYPE_VALUE.items()}
+                    for i in range(len(tybin)):
+                        b=tybin[i]
+                        if b=="1":
+                            n=2**i
+                            if n in numType.keys():
+                                self.mainWindow[f"-CARD_TYPE_{numType[n]}-"].update(True)
+                                if f"-CARD_TYPE_{numType[n]}-"=="-CARD_TYPE_PENDULUM-":
+                                    pen=True
+                                    self.isP=True
+                                    for scale in cti.SCALE:
+                                        self.mainWindow[f"{scale}"].update(disabled=False)
+                                if f"-CARD_TYPE_{numType[n]}-"=="-CARD_TYPE_LINK-":
+                                    lin=True
+                                    for dis in self.DISABLE_LINK_STATUS:
+                                        self.mainWindow[f"{dis}"].update(disabled=True)
+                                    for marker in cti.LINK_MARKER.keys():
+                                        self.mainWindow[f"-LINK_MARKER{marker}-"].update(disabled=False)
+                    self.mainWindow["-ATK-"].update(datas[5])
+                    if lin:
+                        defbin=format(datas[6],"b")[::-1]
+                        numMarker={v: k for k, v in cti.LINK_MARKER.items()}
+                        for i in range(len(defbin)):
+                            b=defbin[i]
+                            if b=="1":
+                                n=2**i
+                                if n in numMarker.keys():
+                                    self.mainWindow[f"-LINK_MARKER{numMarker[n]}-"].update(True)
+                    self.mainWindow["-DEF-"].update(datas[6])
+                    if pen:
+                        levelHex=format(datas[7],"x")
+                        level=int(levelHex[-4:],16)
+                        rightScale=int(levelHex[-6:-4],16)
+                        leftScale=int(levelHex[:-6],16)
+                        self.mainWindow["-LEVEL-"].update(level)
+                        self.mainWindow["-SCALE_RIGHT-"].update(rightScale)
+                        self.mainWindow["-SCALE_LEFT-"].update(leftScale)
+                    else:
+                        self.mainWindow["-LEVEL-"].update(datas[7])
+                    self.mainWindow["-RACE-"].update(wl.RACE[int(math.log2(datas[8]))+1 if datas[8]!=0 else 0])
+                    self.mainWindow["-ATTRIBUTE-"].update(wl.ATTRIBUTE[int(math.log2(datas[9]))+1 if datas[9]!=0 else 0])
+                    catbin=format(datas[10],"b")[::-1]
+                    numCat={v: k for k, v in ci.CATEGORY_VALUE.items()}
+                    for i in range(len(catbin)):
+                        b=catbin[i]
+                        if b=="1":
+                            n=2**i
+                            if n in numCat.keys():
+                                self.mainWindow[f"-CATEGORY_{numCat[n]}-"].update(True)
+                    texts=self.cdbTexts[self.values["-CDB_TEXTS-"][0]]
+                    self.mainWindow["-CARD_NAME-"].update(texts[1])
+                    t=texts[2]
+                    if pen and re.search("【Ｐスケール：青.*】",t,flags=0) and re.search("【モンスター.*】",t,flags=0):
+                        try:
+                            t=re.split('【モンスター.*】', re.split('【Ｐスケール：青.*】', t)[1].strip())
+                            pt=t[0].strip()
+                            mt=t[1].strip()
+                            self.mainWindow["-CARD_TEXT-"].update(mt)
+                            self.mainWindow["-CARD_TEXT_P-"].update(pt)
+                        except:
+                            self.mainWindow["-CARD_TEXT-"].update(texts[2])
+                    else:
+                        self.mainWindow["-CARD_TEXT-"].update(texts[2])
+                    for i in range(3,19):
+                        self.mainWindow[f"-CARD_STR{i-2}-"].update(texts[i])
+                    sg.popup('レコードから反映しました。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+            elif self.event=="-WRITE_CDB-":
+                path=self.values["-CDB_PATH-"]
+                try:
+                    with sqlite3.connect(path) as conn:
+                        cur=conn.cursor()
+                        sql=self.createSQL("data")
+                        cur.execute(sql)
+                        sql=self.createSQL("text")
+                        cur.execute(sql)
+                        cur.close()
+                        sg.popup('追加しました。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+                        self.mainWindow.write_event_value("-READ_CDB-",None)
+                except Exception as e:
+                    #print(e)
+                    sg.popup('書き込み失敗。cdbのパスが誤っているか既に同様のレコードが存在している可能性があります。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
         self.mainWindow.close()
 
 if __name__=="__main__":

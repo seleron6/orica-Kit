@@ -378,7 +378,7 @@ def createWordImage(text,font,fontSize,textColor,height,lang=None):
         try:
             img = img.crop((left_margin, 0, right_margin + 1, img.height))
         except:
-            return None
+            return cv_image
         else:
             cv_image = cv2.cvtColor(np.asarray(img), cv2.COLOR_RGBA2BGRA)
             pad2=0
@@ -388,7 +388,10 @@ def createWordImage(text,font,fontSize,textColor,height,lang=None):
                 pad=int(fontSize/18)
             elif text in ("＠","。","、"):
                 pad=int(fontSize/6)
-            elif re.match("[ぁ-んァ-ヶｱ-ﾝﾞﾟ]",text,flags=0) or text in ("ー","＝","【"):
+            elif text in ("ラ"):
+                pad=int(fontSize/3)
+                pad2=int(fontSize/9)
+            elif re.match("[ぁ-んァ-ヶｱ-ﾝﾞﾟ]",text,flags=0) or text in ("ー","＝","【","」"):
                 pad=int(fontSize/4.5)
             elif text in ["・","："]:
                 pad=int(fontSize/3)
