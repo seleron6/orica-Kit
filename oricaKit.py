@@ -7,6 +7,7 @@ import sqlite3
 import math
 import re
 import json
+from PIL import Image 
 
 import validate as vali
 import windowLayout as wl
@@ -702,7 +703,7 @@ class main():
                         atkImage=pre.createParamImage(atk if atk!="-2" else "?")
                         atkHeight,atkWidth,atkChannel=atkImage.shape
                         if atkWidth>104:
-                            atkImage=cv2.resize(atkImage,(104,atkHeight))
+                            atkImage=cv2.resize(atkImage,(104,atkHeight),interpolation = cv2.INTER_AREA)
                         atkHeight,atkWidth,atkChannel=atkImage.shape
                         if atk not in ("-2","-1"):
                             baseFrame=pre.CvOverlayImage.overlay(baseFrame,atkImage,(850-atkWidth,1572))
@@ -748,7 +749,7 @@ class main():
                             defImage=pre.createParamImage(defence if defence!="-2" else "?")
                             defHeight,defWidth,defChannel=defImage.shape
                             if defWidth>104:
-                                defImage=cv2.resize(defImage,(104,defHeight))
+                                defImage=cv2.resize(defImage,(104,defHeight),interpolation = cv2.INTER_AREA)
                             defHeight,defWidth,defChannel=defImage.shape
                             if defence not in ("-2","-1"):
                                 baseFrame=pre.CvOverlayImage.overlay(baseFrame,defImage,(1084-defWidth,1572))
@@ -803,15 +804,15 @@ class main():
                     self.mainWindow["-INSERT_IMAGE-"].update(disabled=True)
                     self.cardImageWithoutText=baseFrame
                 self.cardImage=baseFrame
-                baseFrame = cv2.resize(baseFrame, canvasSize)
+                baseFrame = cv2.resize(baseFrame, canvasSize,interpolation = cv2.INTER_AREA)
                 self.canvas.erase()
                 self.canvas.draw_image_plus(baseFrame)
                 if self.bigCanvas is not None:
                     if self.bigImage is None:
-                        self.bigImage=cv2.resize(self.cardImage,(590,860))
+                        self.bigImage=cv2.resize(self.cardImage,(590,860),interpolation = cv2.INTER_AREA)
                     else:
                         bigImageHeight,bigImageWidth,_=self.bigImage.shape
-                        self.bigImage=cv2.resize(self.cardImage,(bigImageWidth,bigImageHeight))
+                        self.bigImage=cv2.resize(self.cardImage,(bigImageWidth,bigImageHeight),interpolation = cv2.INTER_AREA)
                     self.bigCanvas.draw_image_plus(self.bigImage)
                 if "LANGUAGE" in self.event and self.adjustWindow is not None:
                     self.adjustWindow.close()
@@ -853,15 +854,15 @@ class main():
                 if self.isP:
                     baseFrame=self.textDrawP(baseFrame,textP)
                 self.cardImage=baseFrame
-                baseFrame = cv2.resize(baseFrame, canvasSize)
+                baseFrame = cv2.resize(baseFrame, canvasSize,interpolation = cv2.INTER_AREA)
                 self.canvas.erase()
                 self.canvas.draw_image_plus(baseFrame)
                 if self.bigCanvas is not None:
                     if self.bigImage is None:
-                        self.bigImage=cv2.resize(self.cardImage,(590,860))
+                        self.bigImage=cv2.resize(self.cardImage,(590,860),interpolation = cv2.INTER_AREA)
                     else:
                         bigImageHeight,bigImageWidth,_=self.bigImage.shape
-                        self.bigImage=cv2.resize(self.cardImage,(bigImageWidth,bigImageHeight))
+                        self.bigImage=cv2.resize(self.cardImage,(bigImageWidth,bigImageHeight),interpolation = cv2.INTER_AREA)
                     self.bigCanvas.draw_image_plus(self.bigImage)
             elif self.event=="-ILLUST_PATH-":
                 path=self.values["-ILLUST_PATH-"]
@@ -872,10 +873,10 @@ class main():
                     bigCanvasLayout,self.bigCanvas=wl.imageWindowLayout()
                     self.imageWindow=sg.Window("拡大画像",bigCanvasLayout,resizable=False,finalize=True,location=(self.mainWindow.current_location()[0]+wl.WIDTH+40,self.mainWindow.current_location()[1]),return_keyboard_events=True,icon=self.ICON)
                     if self.bigImage is None:
-                        self.bigImage=cv2.resize(self.cardImage,(590,860))
+                        self.bigImage=cv2.resize(self.cardImage,(590,860),interpolation = cv2.INTER_AREA)
                     else:
                         bigImageHeight,bigImageWidth,_=self.bigImage.shape
-                        self.bigImage=cv2.resize(self.cardImage,(bigImageWidth,bigImageHeight))
+                        self.bigImage=cv2.resize(self.cardImage,(bigImageWidth,bigImageHeight),interpolation = cv2.INTER_AREA)
                     self.bigCanvas.draw_image_plus(self.bigImage)
                 else:
                     self.imageWindow.close()
@@ -902,7 +903,7 @@ class main():
                     ext=self.values["-SAVE_EXTENSION-"]
                     path=path+"/"+name+"."+ext
                     size=(int(self.values["-SAVE_WIDTH-"]),int(self.values["-SAVE_HEIGHT-"]))
-                    saveImage=cv2.resize(self.cardImage,size)
+                    saveImage=cv2.resize(self.cardImage,size,interpolation = cv2.INTER_AREA)
                     if self.imwrite(path, saveImage):
                         sg.popup('保存しました',location=(int(self.saveWindow.current_location()[0]+80),int(self.saveWindow.current_location()[1]+80)),icon=self.ICON)
                     else:

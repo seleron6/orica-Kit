@@ -140,7 +140,7 @@ def createNameImageJP(text,textColor,widthLimit):
             rtnImage=cv2.hconcat([rtnImage, image])
     imageHeight,imageWidth,imageChannel=rtnImage.shape
     if imageWidth>widthLimit:
-        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight))
+        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight),interpolation = cv2.INTER_AREA)
     return rtnImage
 
 def createNameImageEN(text,textColor,widthLimit):
@@ -154,7 +154,7 @@ def createNameImageEN(text,textColor,widthLimit):
         rtnImage=createWordImage(text,font,baseFontSize,textColor,textHeight,"en")
     imageHeight,imageWidth,imageChannel=rtnImage.shape
     if imageWidth>widthLimit:
-        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight))
+        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight),interpolation = cv2.INTER_AREA)
     return rtnImage
 
 def createLinkImage(link):
@@ -165,7 +165,7 @@ def createLinkImage(link):
     linkHeight=getTextHeight(link,font)
     linkImage=createWordImage(link,font,baseFontSize,(0,0,0),linkHeight)
     imageHeight,imageWidth,imageChannel=linkImage.shape
-    linkImage=cv2.resize(linkImage,(int(imageWidth*1.3),imageHeight))
+    linkImage=cv2.resize(linkImage,(int(imageWidth*1.3),imageHeight),interpolation = cv2.INTER_AREA)
     return linkImage
 
 def createParamImage(param):
@@ -179,7 +179,7 @@ def createParamImage(param):
     paramImage=createWordImage(param,font,baseFontSize,(0,0,0),paramHeight)
     if param=="?":
         paramHeight,paramWidth,_=paramImage.shape
-        paramImage=cv2.resize(paramImage,(int(paramWidth*0.8),paramHeight))
+        paramImage=cv2.resize(paramImage,(int(paramWidth*0.8),paramHeight),interpolation = cv2.INTER_AREA)
     return paramImage
 
 def createRaceImage(values,lang):
@@ -233,7 +233,7 @@ def createRaceImageJP(font,typeList,fontSize):
             rtnImage=cv2.hconcat([rtnImage, image])
     imageHeight,imageWidth,imageChannel=rtnImage.shape
     if imageWidth>widthLimit:
-        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight))
+        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight),interpolation = cv2.INTER_AREA)
     return rtnImage
 
 def createRaceImageEN(font,typeList,fontSize):
@@ -258,7 +258,7 @@ def createRaceImageEN(font,typeList,fontSize):
             rtnImage=cv2.hconcat([rtnImage, image])
     imageHeight,imageWidth,imageChannel=rtnImage.shape
     if imageWidth>widthLimit:
-        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight))
+        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight),interpolation = cv2.INTER_AREA)
     return rtnImage
 
 def createTextImage(text,lang,fontSize,widthLimit,ctype=None):
@@ -299,7 +299,7 @@ def createTextImageJP(text,fontSize,widthLimit):
             rtnImage=cv2.hconcat([rtnImage, image])
     imageHeight,imageWidth,imageChannel=rtnImage.shape
     if imageWidth>widthLimit:
-        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight))
+        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight),interpolation = cv2.INTER_AREA)
     return rtnImage
 
 def createTextImageEN(text,fontSize,widthLimit,ctype):
@@ -316,7 +316,7 @@ def createTextImageEN(text,fontSize,widthLimit,ctype):
         rtnImage=createWordImage(text,font,fontSize,textColor,textHeight,"en")
     imageHeight,imageWidth,imageChannel=rtnImage.shape
     if imageWidth>widthLimit:
-        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight))
+        rtnImage = cv2.resize(rtnImage, (widthLimit,imageHeight),interpolation = cv2.INTER_AREA)
     return rtnImage
 
 def createScaleImage(text):
@@ -400,7 +400,7 @@ def createWordImage(text,font,fontSize,textColor,height,lang=None):
                 pad=int(fontSize/9)
             imageHeight,imageWidth,imageChannel=cv_image.shape
             if text=="＠":
-                cv_image = cv2.resize(cv_image, (int(imageWidth*0.85),imageHeight))
+                cv_image = cv2.resize(cv_image, (int(imageWidth*0.85),imageHeight),interpolation = cv2.INTER_AREA)
             cv_image=cv2.copyMakeBorder(cv_image, 0, 0, pad2, pad, cv2.BORDER_CONSTANT, value=(0,0,0))
     return cv_image
 
