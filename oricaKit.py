@@ -1223,6 +1223,9 @@ class main():
                 if he in ("0x","0X",""):
                     self.mainWindow["-DEC-"].update("")
                     if he=="": self.mainWindow["-HEX-"].update("0x")
+                elif re.fullmatch('[1-9a-fA-F]+', he):
+                    self.mainWindow["-DEC-"].update(int(he,16))
+                    self.mainWindow["-HEX-"].update("0x"+he)
                 else:
                     self.mainWindow["-DEC-"].update(int(he,0))
             elif self.event=="-DEC-_Click":

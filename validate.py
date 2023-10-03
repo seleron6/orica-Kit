@@ -23,6 +23,7 @@ def validateDecHex(text,ver):
         else:
             return True
     elif ver=="hex":
+        if re.fullmatch('[1-9a-fA-F]+', text): return True
         if not (text.startswith("0x") or text.startswith("0X")): return False
         if text in ("0x","0X"): return True
         try:
