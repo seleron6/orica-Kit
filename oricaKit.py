@@ -151,7 +151,7 @@ class main():
         [self.VALUE_BLANK.append(f"-CARD_STR{i}-") for i in range(1,17)]
         self.H2Z_DIGIT = str.maketrans('1234567890', '１２３４５６７８９０')
         self.DATAS=['datas', 'id', 'ot', 'alias', 'setcode', 'type', 'atk', 'def', 'level', 'race', 'attribute', 'category']
-        self.VERSION="β-0.2"
+        self.VERSION="β-0.3"
         self.ICON="./icon.ico"
         self.DATA_VALIDATE=[
             ["-DATA_DETAIL_ID-",0,999999999],
@@ -251,6 +251,8 @@ class main():
         self.mainWindow.write_event_value("-CATEGORY_RESET-",None)
         [self.mainWindow[n].update("") for n in self.VALUE_BLANK]
         self.mainWindow["-LANGUAGE_EN-"].update(True)
+        self.mainWindow["-DEC-"].update(0)
+        self.mainWindow["-HEX-"].update("0x0")
         self.resetVariable()
     
     def resetVariable(self):
@@ -281,11 +283,19 @@ class main():
         sg.user_settings_filename(filename="config.json",path=".")
         self.startPos=[0,0]
         self.path="./"
+        self.ext="jpg"
+        self.savePath="./"
+        self.saveWidth=1180
+        self.saveHeight=1720
         try:
             with open('./config.json') as f:
                 d=json.load(f)
                 self.startPos=d["-location-"]
                 self.path=d["-cdbpath-"]
+                self.ext=d["-saveExtension-"]
+                self.savePath=d["-savePath-"]
+                self.saveWidth=d["-saveWidth-"]
+                self.saveHeight=d["-saveHeight-"]
         except:
             pass
     
@@ -298,6 +308,8 @@ class main():
         self.mainWindow['-CDB_DATAS-'].bind('<Double-Button-1>', '_Double')
         self.mainWindow['-CDB_TEXTS-'].bind('<Double-Button-1>', '_Double')
         self.mainWindow["-CDB_PATH-"].update(self.path)
+        self.mainWindow['-DEC-'].bind('<Button-1>', '_Click')
+        self.mainWindow['-HEX-'].bind('<Button-1>', '_Click')
 
     def setValidate(self):
         for k,v in self.VALIDATE_NUMBER.items():
@@ -305,6 +317,10 @@ class main():
             uLimit=v[1]
             vcmd = (self.mainWindow.TKroot.register(vali.validateNumber),'%P',lLimit,uLimit)
             self.mainWindow[k].widget.configure(validate='all',validatecommand=vcmd)
+        vcmd = (self.mainWindow.TKroot.register(vali.validateDecHex),'%P',"dec")
+        self.mainWindow["-DEC-"].widget.configure(validate='all',validatecommand=vcmd)
+        vcmd = (self.mainWindow.TKroot.register(vali.validateDecHex),'%P',"hex")
+        self.mainWindow["-HEX-"].widget.configure(validate='all',validatecommand=vcmd)
 
     def imread(self,filename, flags=cv2.IMREAD_UNCHANGED, dtype=np.uint8):
         try:
@@ -431,6 +447,12 @@ class main():
                 if self.window is self.mainWindow:
                     sg.user_settings_set_entry('-location-', self.window.current_location())
                     sg.user_settings_set_entry('-cdbpath-', self.values["-CDB_PATH-"])
+                    if self.saveWindow is not None:
+                        _,sv=self.saveWindow.read(timeout=1)
+                        sg.user_settings_set_entry('-saveExtension-', sv["-SAVE_EXTENSION-"])
+                        sg.user_settings_set_entry('-savePath-', sv["-SAVE_FOLDER-"])
+                        sg.user_settings_set_entry('-saveWidth-', sv["-SAVE_WIDTH-"])
+                        sg.user_settings_set_entry('-saveHeight-', sv["-SAVE_HEIGHT-"])
                     break
                 elif self.window is self.setcodeWindow:
                     self.setcodeWindow=None
@@ -442,6 +464,10 @@ class main():
                     self.imageWindow=None
                     self.window.close()
                 elif self.window is self.saveWindow:
+                    sg.user_settings_set_entry('-saveExtension-', self.values["-SAVE_EXTENSION-"])
+                    sg.user_settings_set_entry('-savePath-', self.values["-SAVE_FOLDER-"])
+                    sg.user_settings_set_entry('-saveWidth-', self.values["-SAVE_WIDTH-"])
+                    sg.user_settings_set_entry('-saveHeight-', self.values["-SAVE_HEIGHT-"])
                     self.saveWindow=None
                     self.window.close()
                 elif self.window is self.detailDatasWindow:
@@ -826,7 +852,17 @@ class main():
                     self.saveWindow["-SAVE_WIDTH-"].widget.configure(validate='all',validatecommand=vcmd)
                     vcmd = (self.saveWindow.TKroot.register(vali.validateNumber),'%P',0,1720)
                     self.saveWindow["-SAVE_HEIGHT-"].widget.configure(validate='all',validatecommand=vcmd)
+                    self.setting()
+                    self.saveWindow["-SAVE_EXTENSION-"].update(self.ext)
+                    self.saveWindow["-SAVE_WIDTH-"].update(self.saveWidth)
+                    self.saveWindow["-SAVE_HEIGHT-"].update(self.saveHeight)
+                    self.saveWindow["-SAVE_FOLDER-"].update(self.savePath)
                 else:
+                    _,sv=self.saveWindow.read(timeout=1)
+                    sg.user_settings_set_entry('-saveExtension-', sv["-SAVE_EXTENSION-"])
+                    sg.user_settings_set_entry('-savePath-', sv["-SAVE_FOLDER-"])
+                    sg.user_settings_set_entry('-saveWidth-', sv["-SAVE_WIDTH-"])
+                    sg.user_settings_set_entry('-saveHeight-', sv["-SAVE_HEIGHT-"])
                     self.saveWindow.close()
                     self.saveWindow=None
             elif self.event=="-TEXT_ADJUST-":
@@ -1176,6 +1212,25 @@ class main():
                 except Exception as e:
                     #print(e)
                     sg.popup('書き込み失敗。cdbのパスが誤っているか既に同様のレコードが存在している可能性があります。',location=(int(self.mainWindow.current_location()[0]+wl.WIDTH/3),int(self.mainWindow.current_location()[1]+wl.HEIGHT/2)),icon=self.ICON)
+            elif self.event=="-DEC-":
+                dec=self.values["-DEC-"]
+                if dec!="":
+                    self.mainWindow["-HEX-"].update(hex(int(dec)))
+                else:
+                    self.mainWindow["-HEX-"].update("0x")
+            elif self.event=="-HEX-":
+                he=self.values["-HEX-"]
+                if he in ("0x","0X",""):
+                    self.mainWindow["-DEC-"].update("")
+                    if he=="": self.mainWindow["-HEX-"].update("0x")
+                else:
+                    self.mainWindow["-DEC-"].update(int(he,0))
+            elif self.event=="-DEC-_Click":
+                self.mainWindow["-DEC-"].widget.select_from(0)
+                self.mainWindow["-DEC-"].widget.select_to(100)
+            elif self.event=="-HEX-_Click":
+                self.mainWindow["-HEX-"].widget.select_from(0)
+                self.mainWindow["-HEX-"].widget.select_to(100)
         self.mainWindow.close()
 
 if __name__=="__main__":

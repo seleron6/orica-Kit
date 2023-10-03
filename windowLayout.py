@@ -399,6 +399,11 @@ def textWindowLayout():
 def sqlWindowLayout():
     layout=[
         sg.Column([[
+            sg.Text("10進数",pad=(0,0)),
+            sg.Input("",key="-DEC-",size=(10,1),pad=(0,0),enable_events=True),
+            sg.Text("⇔",pad=(0,0)),
+            sg.Input("0x",key="-HEX-",size=(10,1),pad=(0,0),enable_events=True),
+            sg.Text("16進数",pad=(0,0)),
             sg.Radio("datas","SQL_RADIO",True,key="-SQL_RADIO_DATA-",pad=(0,0),enable_events=True),
             sg.Radio("texts","SQL_RADIO",False,key="-SQL_RADIO_TEXT-",pad=(0,0),enable_events=True),
             sg.Radio("両方","SQL_RADIO",False,key="-SQL_RADIO_ALL-",pad=(0,0),enable_events=True),

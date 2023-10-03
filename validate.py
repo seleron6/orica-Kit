@@ -12,3 +12,24 @@ def validateNumber(text,lLimit,uLimit):
         except ValueError:
             return False
     return True if lLimit <= value <= uLimit else False
+
+def validateDecHex(text,ver):
+    if text=="": return True
+    if ver=="dec":
+        try:
+            text=hex(int(text))
+        except:
+            return False
+        else:
+            return True
+    elif ver=="hex":
+        if not (text.startswith("0x") or text.startswith("0X")): return False
+        if text in ("0x","0X"): return True
+        try:
+            text=int(text,0)
+        except:
+            return False
+        else:
+            return True
+    else:
+        return False
